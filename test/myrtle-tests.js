@@ -261,6 +261,37 @@ jQuery(function ($) {
         Myrtle.realTimers();
     });
     
+    test("Time is handled properly inside timeouts", function () {
+        var obj, foo, bar;
+        obj = {
+            foo : function () {},
+            bar : function () {}
+        };
+        foo = Myrtle.spy(obj, 'foo');
+        bar = Myrtle.spy(obj, 'bar');
+        
+        Myrtle.fakeTimers();
+        
+        setTimeout(function () {
+            obj.foo();
+            setTimeout(function () {
+                obj.bar();
+            }, 10);
+        }, 10);
+        
+        Myrtle.tick(15);
+        
+        strictEqual(foo.callCount(), 1, "Foo should have been executed");
+        
+        Myrtle.tick(5);
+        
+        strictEqual(bar.callCount(), 1, "Bar should have been executed at 20ms");
+        
+        Myrtle.realTimers();
+        foo.release();
+        bar.release();
+    });
+    
     test("Multiple timeouts are handled", function () {
         var obj, handle;
         obj = {
@@ -317,6 +348,108 @@ jQuery(function ($) {
         strictEqual(handle.callCount(), 1, "Only one of the timers should have been executed.");
         
         handle.release();
+        Myrtle.realTimers();
+    });
+    
+    test("Myrtle can fake setInterval", function () {
+        var obj, handle;
+        obj = {
+            foo : function () {}
+        };
+        handle = Myrtle.spy(obj, 'foo');
+        Myrtle.fakeTimers();
+        
+        setInterval(obj.foo, 10);
+        
+        strictEqual(handle.callCount(), 0);
+        
+        Myrtle.tick(10);
+        
+        strictEqual(handle.callCount(), 1);
+        
+        Myrtle.tick(10);
+        
+        strictEqual(handle.callCount(), 2);
+        
+        Myrtle.tick(20);
+        
+        strictEqual(handle.callCount(), 4);
+        
+        Myrtle.tick(200);
+        
+        strictEqual(handle.callCount(), 24);
+        
+        handle.release();
+        Myrtle.realTimers();
+    });
+    
+    test("Myrtle can clear intervals", function () {
+        var obj, foo, bar, baz, t1, t2, t3;
+        
+        obj = {
+            foo : function () {},
+            bar : function () {},
+            baz : function () {}
+        };
+        foo = Myrtle.spy(obj, 'foo');
+        bar = Myrtle.spy(obj, 'bar');
+        baz = Myrtle.spy(obj, 'baz');
+        
+        Myrtle.fakeTimers();
+        
+        t1 = setInterval(obj.foo, 5);
+        t2 = setInterval(obj.bar, 10);
+        t3 = setInterval(obj.baz, 15);
+        
+        Myrtle.tick(5); // 5
+        
+        strictEqual(foo.callCount(), 1, "A) Foo should have been called once.");
+        strictEqual(bar.callCount(), 0, "A) Bar should not have been called.");
+        strictEqual(baz.callCount(), 0, "A) Baz should not have been called.");
+        
+        Myrtle.tick(5); // 10
+        
+        strictEqual(foo.callCount(), 2, "B) Foo call count is incorrect");
+        strictEqual(bar.callCount(), 1, "B) Bar call count is incorrect");
+        strictEqual(baz.callCount(), 0, "B) Baz call count is incorrect");
+        
+        Myrtle.tick(5); // 15
+        
+        strictEqual(foo.callCount(), 3, "C) Foo call count is incorrect");
+        strictEqual(bar.callCount(), 1, "C) Bar call count is incorrect");
+        strictEqual(baz.callCount(), 1, "C) Baz call count is incorrect");
+        
+        Myrtle.tick(45); // 60
+        
+        strictEqual(foo.callCount(), 12, "D) Foo call count is incorrect");
+        strictEqual(bar.callCount(), 6, "D) Bar call count is incorrect");
+        strictEqual(baz.callCount(), 4, "D) Baz call count is incorrect");
+        
+        clearInterval(t1);
+        
+        Myrtle.tick(10); // 70
+        
+        strictEqual(foo.callCount(), 12, "E) Foo call count is incorrect");
+        strictEqual(bar.callCount(), 7,  "E) Bar call count is incorrect");
+        strictEqual(baz.callCount(), 4,  "E) Baz call count is incorrect");
+        
+        Myrtle.tick(10); // 80
+        
+        strictEqual(foo.callCount(), 12, "F) Foo call count is incorrect");
+        strictEqual(bar.callCount(), 8,  "F) Bar call count is incorrect");
+        strictEqual(baz.callCount(), 5,  "F) Baz call count is incorrect");
+        
+        clearInterval(t2);
+        
+        Myrtle.tick(10); // 90
+        
+        strictEqual(foo.callCount(), 12, "E) Foo call count is incorrect");
+        strictEqual(bar.callCount(), 8,  "E) Bar call count is incorrect");
+        strictEqual(baz.callCount(), 6,  "E) Baz call count is incorrect");
+        
+        foo.release();
+        bar.release();
+        baz.release();
         Myrtle.realTimers();
     });
 });

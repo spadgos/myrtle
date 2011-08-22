@@ -85,13 +85,25 @@
         
         M.fakeTimers = function () {
             M.stub(root, 'setTimeout', function (orig, fn, time) {
-                var executeAt = currentTime + time;
-                ++counter;
+                var executeAt, id;
+                
+                time = parseInt(time, 10);
+                if (time < 0) {
+                    throw new Error("setTimeout can only take time intervals in non-negative integers");
+                }
+                
+                executeAt = currentTime + time;
+                
+                if (fn.__myrtle_setInterval) {
+                    id = fn.__myrtle_setInterval;
+                } else {
+                    id = ++counter;
+                }
                 if (typeof queue[executeAt] === 'undefined') {
                     queue[executeAt] = {};
                 }
-                queue[executeAt][counter] = fn;
-                return counter;
+                queue[executeAt][id] = fn;
+                return id;
             });
             
             M.stub(root, 'clearTimeout', function (orig, id) {
@@ -110,31 +122,57 @@
                     }
                 }
             });
+            
+            M.stub(root, 'setInterval', function (orig, fn, time) {
+                var id, wrapped;
+
+                time = parseInt(time, 10);
+                if (time <= 0) {
+                    throw new Error("setInterval can only take time intervals in positive integers");
+                }
+                
+                wrapped = function () {
+                    fn.call(root);
+                    root.setTimeout(wrapped, time);
+                };
+                id = root.setTimeout(wrapped, time);
+                wrapped.__myrtle_setInterval = id;
+                return id;
+            });
+            M.stub(root, 'clearInterval', function (orig, id) {
+                root.clearTimeout(id);
+            });
         };
         
         M.realTimers = function () {
             M(root, 'setTimeout').release();
             M(root, 'clearTimeout').release();
-            
+            M(root, 'setInterval').release();
+            M(root, 'clearInterval').release();
             reset();
         };
         
         M.tick = function (time) {
-            var i, f, fl;
-            currentTime += time;
-            for (i in queue) {
-                if (queue.hasOwnProperty(i)) {
-                    i = parseInt(i, 10);
-                    if (i <= currentTime) {
-                        for (f in queue[i]) {
-                            if (queue[i].hasOwnProperty(f)) {
-                                queue[i][f].call(root);
-                            }
+            var f, destination;
+            //i = currentTime;
+            //currentTime += time;
+            destination = currentTime + time;
+            
+            if (isEmpty(queue)) {
+                return;
+            }
+            // TODO: this is probably highly inefficient...
+            for (; currentTime <= destination; ++currentTime) {
+                if (queue.hasOwnProperty(currentTime)) {
+                    for (f in queue[currentTime]) {
+                        if (queue[currentTime].hasOwnProperty(f)) {
+                            queue[currentTime][f].call(root);
                         }
-                        delete queue[i];
                     }
+                    delete queue[currentTime];
                 }
             }
+            currentTime = destination;
         };
     }());
     
