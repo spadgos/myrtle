@@ -7,7 +7,8 @@
         removeFromStore,
         cleanUp,
         noop,
-        undef
+        undef,
+        isEmpty
     ;
     
     store = [];
@@ -29,6 +30,7 @@
         var fn = obj[fnName],
             info
         ;
+        options = options || {};
         if (typeof fn !== 'function') {
             throw new Error("Supplied variable (" + fnName + ") is not a function.");
         }
@@ -64,6 +66,78 @@
             profile : true
         });
     };
+    
+    // timers module
+    (function () {
+        var counter = 0,
+            currentTime = 0,
+            queue = {},
+            reset
+        ;
+
+        reset = function () {
+            counter = 0;
+            currentTime = 0;
+            queue = {};
+        };
+        
+        reset();
+        
+        M.fakeTimers = function () {
+            M.stub(root, 'setTimeout', function (orig, fn, time) {
+                var executeAt = currentTime + time;
+                ++counter;
+                if (typeof queue[executeAt] === 'undefined') {
+                    queue[executeAt] = {};
+                }
+                queue[executeAt][counter] = fn;
+                return counter;
+            });
+            
+            M.stub(root, 'clearTimeout', function (orig, id) {
+                var t;
+                if (id && id <= counter) {
+                    for (t in queue) {
+                        if (queue.hasOwnProperty(t)) {
+                            if (typeof queue[t][id] !== 'undefined') {
+                                delete queue[t][id];
+                                if (isEmpty(queue[t])) {
+                                    delete queue[t];
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        
+        M.realTimers = function () {
+            M(root, 'setTimeout').release();
+            M(root, 'clearTimeout').release();
+            
+            reset();
+        };
+        
+        M.tick = function (time) {
+            var i, f, fl;
+            currentTime += time;
+            for (i in queue) {
+                if (queue.hasOwnProperty(i)) {
+                    i = parseInt(i, 10);
+                    if (i <= currentTime) {
+                        for (f in queue[i]) {
+                            if (queue[i].hasOwnProperty(f)) {
+                                queue[i][f].call(root);
+                            }
+                        }
+                        delete queue[i];
+                    }
+                }
+            }
+        };
+    }());
+    
     M.size = function () {
         return store.length;
     };
@@ -255,6 +329,20 @@
              ? args[0][args[1]]
              : args[0]
         ;
+    };
+    
+    isEmpty = function (obj) {
+        var i;
+        if (Object.prototype.toString.call(obj) === '[object Array]') {
+            return obj.length === 0;
+        } else {
+            /*jslint forin: true */
+            for (i in obj) {
+                return false;
+            }
+            /*jslint forin: false */
+            return true;
+        }
     };
     
     if (typeof module !== 'undefined') {

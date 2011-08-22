@@ -11,6 +11,8 @@ jQuery(function ($) {
     Cls.prototype.sub = function (y) {
         return this.x - y;
     };
+    module("Spying, stubbing, profiling");
+    
     test("Myrtle will only instrument functions once", function () {
         var obj = new Cls(),
             fnInfo
@@ -231,5 +233,90 @@ jQuery(function ($) {
         
         strictEqual(typeof handle.lastError(), "undefined", "There should have been no error trapped.");
     });
-});
     
+    module("Fake timers");
+    
+    test("Myrtle can fake setTimeout", function () {
+        var obj, handle;
+        obj = {
+            foo : function () {}
+        };
+        
+        handle = Myrtle.spy(obj, 'foo');
+        
+        Myrtle.fakeTimers();
+        
+        setTimeout(function () {
+            obj.foo();
+        }, 100);
+        
+        strictEqual(handle.callCount(), 0, "The function should not have executed yet.");
+        
+        Myrtle.tick(200);
+        
+        strictEqual(handle.callCount(), 1, "The function should have been executed now.");
+        
+        handle.release();
+        
+        Myrtle.realTimers();
+    });
+    
+    test("Multiple timeouts are handled", function () {
+        var obj, handle;
+        obj = {
+            foo : function () {}
+        };
+        handle = Myrtle.spy(obj, 'foo');
+        Myrtle.fakeTimers();
+        
+        setTimeout(obj.foo, 100);
+        setTimeout(obj.foo, 100);
+        
+        setTimeout(obj.foo, 200);
+        
+        Myrtle.tick(50);
+        
+        strictEqual(handle.callCount(), 0, "None should have been called yet");
+        
+        Myrtle.tick(50);
+        
+        strictEqual(handle.callCount(), 2, "The two functions at 100ms should have been called.");
+
+        setTimeout(obj.foo, 100);
+
+        Myrtle.tick(100);
+        
+        strictEqual(handle.callCount(), 4, "The two functions at 200ms should have been called.");
+        
+        setTimeout(obj.foo, 0);
+        
+        Myrtle.tick(0);
+        strictEqual(handle.callCount(), 5, "The zero-ms timeout should have been called.");
+        
+        handle.release();
+        Myrtle.realTimers();
+    });
+    
+    test("Fake timers can be cleared", function () {
+        var obj, handle, t1, t2, t3;
+        obj = {
+            foo : function () {}
+        };
+        handle = Myrtle.spy(obj, 'foo');
+        Myrtle.fakeTimers();
+        
+        t1 = setTimeout(obj.foo, 50);
+        t2 = setTimeout(obj.foo, 100);
+        t3 = setTimeout(obj.foo, 150);
+        
+        clearTimeout(t1);
+        clearTimeout(t3);
+        
+        Myrtle.tick(200);
+        
+        strictEqual(handle.callCount(), 1, "Only one of the timers should have been executed.");
+        
+        handle.release();
+        Myrtle.realTimers();
+    });
+});
