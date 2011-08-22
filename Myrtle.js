@@ -134,8 +134,9 @@
             history : []                            // Data about each call to this function
         };
         obj[fnName] = function () {
-            var ret, args, boundFn, startTime;
+            var ret, args, boundFn, startTime, error;
             
+            // get the arguments passed to this function
             args = Array.prototype.slice.apply(arguments);
             
             boundFn = function () {
@@ -146,37 +147,57 @@
             if (info.profile) {
                 startTime = new Date();
             }
-            ret = info.stub === false
-                ? info.origFn.apply(this, args)
-                : (info.stub
-                   ? info.stub.apply(this, [boundFn].concat(args))
-                   : undef
-                )
-            ;
+            try {
+                ret = (info.stub === false)
+                    ? info.origFn.apply(this, args)
+                    : (info.stub
+                       ? info.stub.apply(this, [boundFn].concat(args))
+                       : undef
+                    )
+                ;
+            } catch (e) {
+                error = e;
+            }
             if (info.spy || info.profile) {
                 info.history.push({
-                    time : info.profile && (new Date() - startTime),
-                    ret  : info.spy ? ret : undef,
-                    args : info.spy ? args : undef
+                    time   : info.profile && (new Date() - startTime),
+                    ret    : info.spy ? ret : undef,
+                    args   : info.spy ? args : undef,
+                    'this' : this,
+                    error  : error
                 });
             }
-            return ret;
+            if (error) {
+                throw error;
+            } else {
+                return ret;
+            }
         };
         info.api = {
             callCount : function () {
                 return info.history.length;
             },
-            lastReturn : function () {
+            last : function () {
                 return info.history.length
-                     ? info.history[info.history.length - 1].ret
+                     ? info.history[info.history.length - 1]
                      : undef
                 ;
             },
+            lastReturn : function () {
+                var l = this.last();
+                return l && l.ret;
+            },
             lastArgs : function () {
-                return info.history.length
-                     ? info.history[info.history.length - 1].args
-                     : undef
-                ;
+                var l = this.last();
+                return l && l.args;
+            },
+            lastThis : function () {
+                var l = this.last();
+                return l && l['this'];
+            },
+            lastError : function () {
+                var l = this.last();
+                return l && l.error;
             },
             getHistory : function () {
                 return info.history;

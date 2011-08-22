@@ -177,5 +177,59 @@ jQuery(function ($) {
         equal(fnInfo.getSlowest(), history[1]);
         equal(fnInfo.getQuickest(), history[0]);
     });
+    
+    test("The function context is stored by spies", function () {
+        var obj = new Cls(),
+            other = {
+                x : 100
+            },
+            handle
+        ;
+        
+        handle = Myrtle.spy(obj, 'add');
+        obj.add(3);
+        strictEqual(handle.lastThis(), obj, "The last context was not stored properly.");
+        
+        strictEqual(obj.add.call(other, 3), 103, "The custom context was not passed to the function");
+        
+        strictEqual(handle.lastThis(), other, "The custom context was not stored.");
+        
+        handle.release();
+    });
+    
+    test("Errors thrown by the method are stored by the spy", function () {
+        var obj, handle, err, errorThrown;
+        
+        obj = {
+            foo : function () {
+                throw err;
+            },
+            bar : function () {
+                return "hello";
+            }
+        };
+        err = {};
+        
+        handle = Myrtle.spy(obj, 'foo');
+        
+        try {
+            errorThrown = false;
+            obj.foo();
+        } catch (e) {
+            errorThrown = true;
+            strictEqual(e, err, "The error was not thrown properly");
+        }
+        ok(errorThrown, "The catch block was not executed.");
+        
+        strictEqual(handle.lastError(), err, "The thrown error was not stored.");
+        
+        handle.release();
+        
+        handle = Myrtle.spy(obj, 'bar');
+        
+        obj.bar();
+        
+        strictEqual(typeof handle.lastError(), "undefined", "There should have been no error trapped.");
+    });
 });
     
