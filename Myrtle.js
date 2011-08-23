@@ -1,3 +1,12 @@
+/*!
+ * Myrtle - A JavaScript Mocking Framework
+ * 
+ * https://github.com/spadgos/myrtle/wiki
+ *
+ * Copyright (c) 2011 Nick Fisher
+ * Licensed under the Creative Commons BY-SA License
+ * http://creativecommons.org/licenses/by-sa/3.0/
+ */
 (function (root) {
     var M,
         store,
