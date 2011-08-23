@@ -422,8 +422,8 @@ jQuery(function ($) {
         Myrtle.tick(45); // 60
         
         strictEqual(foo.callCount(), 12, "D) Foo call count is incorrect");
-        strictEqual(bar.callCount(), 6, "D) Bar call count is incorrect");
-        strictEqual(baz.callCount(), 4, "D) Baz call count is incorrect");
+        strictEqual(bar.callCount(), 6,  "D) Bar call count is incorrect");
+        strictEqual(baz.callCount(), 4,  "D) Baz call count is incorrect");
         
         clearInterval(t1);
         
@@ -577,5 +577,39 @@ jQuery(function ($) {
         equal(obj.f('add'), "add = 7");
         equal(obj.f('multiply'), "multiply = 12");
         equal(obj.f('life, the universe, and everything'), 'life, the universe, and everything = 42');
+    });
+    
+    test("Built functions can be sealed", function () {
+        var f = Myrtle.fn()
+            .when(1).then(true)
+            .otherwise(true)
+            .seal()
+            .when(1).then(false)
+            .otherwise(false)
+        ;
+        ok(f(1), "When precondition still used after sealing");
+        ok(f(2), "Otherwise clause still used after sealing");
+    });
+    
+    test("Built functions can be exported with get", function () {
+        var f = Myrtle.fn()
+            .when(1).then(true)
+            .otherwise('a')
+            .get()
+        ;
+        ok(!('when' in f) && !('then' in f) && !('otherwise' in f) && !('run' in f) && !('get' in f));
+        ok(f(1));
+        equal(f(2), 'a');
+    });
+    
+    test("Myrtle can build upon existing functions", function () {
+        var orig, f;
+        orig = function (a) {
+            return 10 + a;
+        };
+        f = Myrtle.fn(orig).when(1).then(-1);
+        
+        equal(f(1), -1);
+        equal(f(2), 12);
     });
 });

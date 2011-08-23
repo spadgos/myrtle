@@ -221,10 +221,12 @@
         /**
          * Create a function whose return values and behaviour can be modified by setting up preconditions and actions
          * using the supplied methods on the object itself: `when`, `then` and `otherwise`
-         * 
+         *
+         * @param  {Function?}  baseFn  Optional function to base this modified function on. Passing a function here
+         *                              essentially the same as calling `.otherwise().run(baseFn)`
          * @return {Function}
          */
-        M.fn = function () {
+        M.fn = function (baseFn) {
             var f,
                 map = [],
                 blank = {},
@@ -242,7 +244,10 @@
                 }
                 return map.otherwiseRun
                      ? map.otherwiseRun.apply(this, arguments)
-                     : map.otherwise
+                     : (map.hasOwnProperty('otherwise') || typeof baseFn !== 'function'
+                        ? map.otherwise
+                        : baseFn.apply(this, arguments)
+                       )
                 ;
             };
             /**
@@ -290,6 +295,15 @@
                 lastWhen = blank;
                 return this;
             };
+            /**
+             * Instead of returning a hardcoded value when the preconditions are matched, this allows a custom function
+             * to be executed instead.
+             * 
+             * @param  {Function} customFn  A function to run instead. It receives the same arguments as the original,
+             *                              and its return value will be used.
+             * 
+             * @return {this}
+             */
             f.run = function (customFn) {
                 if (lastWhen === blank) {
                     if (map.hasOwnProperty('otherwise') && typeof map.otherwise === 'undefined') {
@@ -304,6 +318,39 @@
                     });
                 }
                 lastWhen = blank;
+                return this;
+            };
+            /**
+             * Seal this function builder, preventing any further modifications. The interface remains exactly the same,
+             * however the other functions now perform no action.
+             * 
+             * @return {this}
+             */
+            f.seal = function () {
+                var i, newFunc = function () {
+                    return this;
+                };
+                for (i in f) {
+                    if (i !== 'get' && f.hasOwnProperty(i)) {
+                        f[i] = newFunc;
+                    }
+                }
+                return this;
+            };
+            /**
+             * Remove the extra function-building methods from this object, effective returning it to be a regular
+             * function. Note that this is *not* necessary for most use cases, only in cases where having additional
+             * properties on the function may affect program flow.
+             * 
+             * @return {Function}
+             */
+            f.get = function () {
+                var i;
+                for (i in f) {
+                    if (f.hasOwnProperty(i)) {
+                        delete f[i];
+                    }
+                }
                 return this;
             };
             return f;
@@ -376,6 +423,8 @@
             // get the arguments passed to this function
             args = Array.prototype.slice.apply(arguments);
             
+            // wrap the original function in a closure so that we can control the context during the call.
+            // calling `boundFn()` will always have the original object set as `this`.
             boundFn = function () {
                 return info.origFn.apply(info.origObj, arguments);
             };
