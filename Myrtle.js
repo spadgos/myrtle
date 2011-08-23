@@ -14,7 +14,9 @@
     store = [];
     
     noop = function () {};
-
+    //////////////////////////
+    //  SPYING AND MOCKING  //
+    //////////////////////////
     /**
      * Myrtle
      * 
@@ -67,7 +69,22 @@
         });
     };
     
-    // timers module
+    M.size = function () {
+        return store.length;
+    };
+    M.releaseAll = function () {
+        var info;
+        while ((info = store.pop())) {
+            cleanUp(info);
+        }
+    };
+    M.hasModified = function (fn) {
+        return getFromStore(fn, true) !== -1;
+    };
+
+    ////////////////////
+    //  TIMERS MODULE //
+    ////////////////////
     (function () {
         var counter = 0,
             currentTime = 0,
@@ -176,18 +193,6 @@
         };
     }());
     
-    M.size = function () {
-        return store.length;
-    };
-    M.releaseAll = function () {
-        var info;
-        while ((info = store.pop())) {
-            cleanUp(info);
-        }
-    };
-    M.hasModified = function (fn) {
-        return getFromStore(fn, true) !== -1;
-    };
 
     getFromStore = function (fn, indexOnly) {
         var i, l;
