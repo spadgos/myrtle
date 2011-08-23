@@ -612,4 +612,37 @@ jQuery(function ($) {
         equal(f(1), -1);
         equal(f(2), 12);
     });
+    test("Myrtle stubs handle built functions", function () {
+        var obj, handle;
+        obj = {
+            x : 2,
+            y : 3,
+            f : function (a) {
+                return 100 * a + 10 * this.x + this.y;
+            }
+        };
+        
+        Myrtle.spy(obj, 'f');
+        
+        handle = Myrtle.stub(obj, 'f', Myrtle.fn()
+            .when(1).then(10)
+            .when(2).run(function (orig, a) {
+                return a * 2;
+            })
+            .when(3).run(function (orig, a) {
+                return orig(a) + 1000;
+            })
+            .otherwise().run(function (orig, a) {
+                return 100 * a + 10 * this.x + this.y;
+            })
+        );
+        
+        
+        equal(obj.f(1), 10, "when.then failed");
+        equal(obj.f(2), 4, "when.run failed");
+        equal(obj.f(3), 1323, "when.run failed when using the original function");
+        equal(obj.f(4), 423, "otherwise.run failed");
+        
+        equal(handle.callCount(), 4, "The function's call count was not maintained.");
+    });
 });

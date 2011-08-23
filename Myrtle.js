@@ -48,6 +48,9 @@
         }
         if (typeof options.stub !== 'undefined') {
             info.stub = options.stub === true ? null : options.stub;
+            if (typeof info.stub === 'function' && typeof info.stub.__myrtleStub !== 'undefined') {
+                info.stub.__myrtleStub = true;
+            }
         }
         return info.api;
     };
@@ -234,7 +237,12 @@
             ;
             
             f = function () {
-                var match = getMatchingMap(map, arguments);
+                var match = getMatchingMap(map,
+                    f.__myrtleStub
+                        // ignore the first argument (the original function)
+                        ? Array.prototype.slice.call(arguments, 1)
+                        : arguments
+                );
                 
                 if (match) {
                     return match.hasOwnProperty('ret')
@@ -250,6 +258,9 @@
                        )
                 ;
             };
+            
+            f.__myrtleStub = false;
+            
             /**
              * Set up the function with the precondition that certain arguments are passed.
              * 
@@ -331,7 +342,7 @@
                     return this;
                 };
                 for (i in f) {
-                    if (i !== 'get' && f.hasOwnProperty(i)) {
+                    if (i !== 'get' && f.hasOwnProperty(i) && typeof f[i] === 'function') {
                         f[i] = newFunc;
                     }
                 }
@@ -347,7 +358,7 @@
             f.get = function () {
                 var i;
                 for (i in f) {
-                    if (f.hasOwnProperty(i)) {
+                    if (f.hasOwnProperty(i)) { // this will remove the __myrtleStub property, which is OK, I guess...
                         delete f[i];
                     }
                 }
