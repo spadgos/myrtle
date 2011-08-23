@@ -178,7 +178,7 @@
             if (isEmpty(queue)) {
                 return;
             }
-            // TODO: this is probably highly inefficient...
+            // TODO: this is highly inefficient...
             for (; currentTime <= destination; ++currentTime) {
                 if (queue.hasOwnProperty(currentTime)) {
                     for (f in queue[currentTime]) {
@@ -193,7 +193,127 @@
         };
     }());
     
+    /////////////////////////
+    //  FUNCTION BUILDERS  //
+    /////////////////////////
+    (function () {
+        var getMatchingMap = function (map, args) {
+            var i, l, a, al = args.length, match, matchFound;
+                
+            // loop over the stored arguments to find a match
+            for (i = 0, l = map.length; i < l; ++i) {
+                if (map[i].args.length === al) {
+                    matchFound = true;
+                    for (a = 0; a < al; ++a) {
+                        if (map[i].args[a] !== args[a]) {
+                            matchFound = false;
+                            break;
+                        }
+                    }
+                    if (matchFound) {
+                        match = map[i];
+                        break;
+                    }
+                }
+            }
+            return match;
+        };
+        /**
+         * Create a function whose return values and behaviour can be modified by setting up preconditions and actions
+         * using the supplied methods on the object itself: `when`, `then` and `otherwise`
+         * 
+         * @return {Function}
+         */
+        M.fn = function () {
+            var f,
+                map = [],
+                blank = {},
+                lastWhen = blank
+            ;
+            
+            f = function () {
+                var match = getMatchingMap(map, arguments);
+                
+                if (match) {
+                    return match.hasOwnProperty('ret')
+                         ? match.ret
+                         : match.run.apply(this, arguments)
+                    ;
+                }
+                return map.otherwiseRun
+                     ? map.otherwiseRun.apply(this, arguments)
+                     : map.otherwise
+                ;
+            };
+            /**
+             * Set up the function with the precondition that certain arguments are passed.
+             * 
+             * @param {...args} Any number of arguments. If the created function is given these exact values, then the
+             *                  precondition is met, and the appropriate value will be returned.
+             * @return {this}   A reference to this object, allowing chaining.
+             */
+            f.when = function () {
+                if (lastWhen !== blank) {
+                    throw new Error(".when() can not be used after another .when()");
+                }
+                lastWhen = arguments;
+                return this;
+            };
+            /**
+             * Specify that a certain value should be returned when the precondition is met.
+             * 
+             * @param  {*} returnVal    The value to return.
+             * @return {this}           A reference to this object, allowing chaining.
+             */
+            f.then = function (returnVal) {
+                if (lastWhen === blank) {
+                    throw new Error(".then() can only be used after .when()");
+                }
+                map.unshift({
+                    args : lastWhen,
+                    ret : returnVal
+                });
+                lastWhen = blank;
+                return this;
+            };
+            /**
+             * Sets up a catch-all precondition and return value.
+             * 
+             * @param  {*} returnVal    The value to return when no other condition has been met.
+             * @return {this}           A reference to this object, allowing chaining.
+             */
+            f.otherwise = function (returnVal) {
+                if (lastWhen !== blank) {
+                    throw new Error(".otherwise() can not be used after .when()");
+                }
+                map.otherwise = returnVal;
+                lastWhen = blank;
+                return this;
+            };
+            f.run = function (customFn) {
+                if (lastWhen === blank) {
+                    if (map.hasOwnProperty('otherwise') && typeof map.otherwise === 'undefined') {
+                        map.otherwiseRun = customFn;
+                    } else {
+                        throw new Error(".run() can only be used after .when() or .otherwise() with no args");
+                    }
+                } else {
+                    map.unshift({
+                        args : lastWhen,
+                        run : customFn
+                    });
+                }
+                lastWhen = blank;
+                return this;
+            };
+            return f;
+        };
+    }());
 
+    ///////////////////////
+    //  PRIVATE METHODS  //
+    ///////////////////////
+    
     getFromStore = function (fn, indexOnly) {
         var i, l;
         for (i = 0, l = store.length; i < l; ++i) {

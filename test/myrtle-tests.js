@@ -443,13 +443,139 @@ jQuery(function ($) {
         
         Myrtle.tick(10); // 90
         
-        strictEqual(foo.callCount(), 12, "E) Foo call count is incorrect");
-        strictEqual(bar.callCount(), 8,  "E) Bar call count is incorrect");
-        strictEqual(baz.callCount(), 6,  "E) Baz call count is incorrect");
+        strictEqual(foo.callCount(), 12, "G) Foo call count is incorrect");
+        strictEqual(bar.callCount(), 8,  "G) Bar call count is incorrect");
+        strictEqual(baz.callCount(), 6,  "G) Baz call count is incorrect");
         
         foo.release();
         bar.release();
         baz.release();
         Myrtle.realTimers();
+    });
+    
+    module("Function generators");
+    
+    test("Functions can be given basic inputs and return values using when and then", function () {
+        var f = Myrtle.fn().when(3).then(9).when(4).then(16);
+        strictEqual(f(3), 9);
+        strictEqual(f(4), 16);
+        strictEqual(typeof f(5), "undefined");
+    });
+    test("Functions can use undefined values", function () {
+        var f = Myrtle.fn().when().then("foo").when('bar').then();
+        strictEqual(f(), "foo");
+        strictEqual(typeof f('bar'), "undefined");
+    });
+    
+    test("Functions can have an otherwise", function () {
+        var f = Myrtle.fn().when(3).then(9).otherwise(10).when(6).then(11);
+        strictEqual(f(3), 9);
+        strictEqual(f(4), 10);
+        strictEqual(f(5), 10);
+        strictEqual(f(6), 11);
+    });
+    
+    test("Functions can pass multiple arguments to when", function () {
+        var f = Myrtle.fn()
+            .when().then('a')
+            .when(1).then('b')
+            .when(1, 2).then('c')
+            .when(1, 2, 3).then('d')
+            .otherwise('e')
+        ;
+        strictEqual(f(), 'a');
+        strictEqual(f(1), 'b');
+        strictEqual(f(1, 2), 'c');
+        strictEqual(f(1, 2, 3), 'd');
+        strictEqual(f(1, 2, 3, 4), 'e');
+    });
+    
+    test("Incorrect usage of function builders throws errors", function () {
+        var count = 0, expected = 0;
+        try {
+            Myrtle.fn().when().when();
+        } catch (e1) {
+            ++count;
+        }
+        equal(count, ++expected);
+        try {
+            Myrtle.fn().then();
+        } catch (e2) {
+            ++count;
+        }
+        equal(count, ++expected);
+        try {
+            Myrtle.fn().when(1).otherwise();
+        } catch (e3) {
+            ++count;
+        }
+        equal(count, ++expected);
+        try {
+            Myrtle.fn().otherwise().then(3);
+        } catch (e4) {
+            ++count;
+        }
+        equal(count, ++expected);
+    });
+    
+    test("Reuse of when clause is last-in-first-out", function () {
+        var f = Myrtle.fn()
+            .when(1).then(false)
+            .when(1).then(true)
+            .otherwise(false)
+            .otherwise(true)
+        ;
+        ok(f(1), "Last when is not being used.");
+        ok(f(), "Last otherwise is not being used.");
+    });
+    
+    test("Custom functions can be executed", function () {
+        var f = Myrtle.fn()
+            .when(1).run(function (a) {
+                return 100 + a;
+            })
+            .when(2).run(function (a) {
+                return 2 * a;
+            })
+        ;
+        equal(f(1), 101);
+        equal(f(2), 4);
+        equal(typeof f(3), "undefined");
+    });
+    
+    test("Custom functions can be executed by otherwise", function () {
+        var f = Myrtle.fn()
+            .when(1).then(10)
+            .otherwise().run(function () {
+                if (arguments.length === 1) {
+                    return arguments[0];
+                } else {
+                    return arguments[0] + arguments[1];
+                }
+            })
+        ;
+        equal(f(1), 10);
+        equal(f(2), 2);
+        equal(f(3, 4), 7);
+    });
+    
+    test("Custom functions are executed in the right scope", function () {
+        var obj = {
+            x : 3,
+            y : 4,
+            f : Myrtle.fn()
+                .when('add').run(function (a) {
+                    return a + " = " + (this.x + this.y);
+                })
+                .when('multiply').run(function (a) {
+                    return a + " = " + (this.x * this.y);
+                })
+                .otherwise().run(function (a) {
+                    return a + " = " + (this.y * 10 + this.x - 1);
+                })
+        };
+        equal(obj.f('add'), "add = 7");
+        equal(obj.f('multiply'), "multiply = 12");
+        equal(obj.f('life, the universe, and everything'), 'life, the universe, and everything = 42');
     });
 });
