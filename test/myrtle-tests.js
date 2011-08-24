@@ -65,6 +65,7 @@ jQuery(function ($) {
         fnInfo.release();
         
         equal(obj.hasOwnProperty('add'), false, "The function should still only exist on the prototype.");
+        
     });
     test("Functions on the object are restored properly", function () {
         var obj = new Cls(),
@@ -79,9 +80,13 @@ jQuery(function ($) {
         
         fnInfo = Myrtle.spy(obj, 'times');
         
+        equal(obj.times(3), 30, "The times function should still work after being spied.");
+        
         fnInfo.release();
         
         equal(obj.hasOwnProperty('times'), true, "The function should still only exist on the prototype.");
+        
+        equal(obj.times(4), 40, "The times function should work after being restored.");
     });
     
     test("Functions can be spied upon", function () {
@@ -112,6 +117,12 @@ jQuery(function ($) {
         fnInfo.release();
         
         equal(obj.add(5), 15, "The function should continue working afterwards.");
+        
+        fnInfo = Myrtle.spy(obj, 'sub');
+        
+        equal(obj.sub(3), 7, "Other functions should continue to work.");
+        
+        fnInfo.release();
     });
     
     test("Functions can be stubbed out", function () {
@@ -197,6 +208,24 @@ jQuery(function ($) {
         strictEqual(handle.lastThis(), other, "The custom context was not stored.");
         
         handle.release();
+    });
+    
+    test("Only functions can be spied upon", function () {
+        var obj = new Cls();
+        raises(function () {
+            Myrtle.spy(obj, 'x');
+        }, /is not a function/);
+    });
+    
+    test("Myrtle knows which methods have been modified", function () {
+        var obj = new Cls(),
+            handle
+        ;
+        ok(!Myrtle.hasModified(obj.add));
+        handle = Myrtle.spy(obj, 'add');
+        ok(Myrtle.hasModified(obj.add));
+        handle.release();
+        ok(!Myrtle.hasModified(obj.add));
     });
     
     test("Errors thrown by the method are stored by the spy", function () {
@@ -319,11 +348,14 @@ jQuery(function ($) {
         
         strictEqual(handle.callCount(), 4, "The two functions at 200ms should have been called.");
         
-        setTimeout(obj.foo, 0);
+        setTimeout(obj.foo, 1);
         
-        Myrtle.tick(0);
+        Myrtle.tick(1);
         strictEqual(handle.callCount(), 5, "The zero-ms timeout should have been called.");
         
+        Myrtle.tick(10);
+        
+        strictEqual(handle.callCount(), 5, "After all have run, they should not run again.");
         handle.release();
         Myrtle.realTimers();
     });
@@ -453,6 +485,23 @@ jQuery(function ($) {
         Myrtle.realTimers();
     });
     
+    test("Tick only accepts positive integers", function () {
+        Myrtle.fakeTimers();
+        raises(function () {
+            Myrtle.tick(0);
+        }, /positive integer/);
+        raises(function () {
+            Myrtle.tick(-1);
+        }, /positive integer/);
+        raises(function () {
+            Myrtle.tick('hello');
+        }, /positive integer/);
+        raises(function () {
+            Myrtle.tick(50.1);
+        }, /positive integer/);
+        Myrtle.realTimers();
+    });
+    
     module("Function generators");
     
     test("Functions can be given basic inputs and return values using when and then", function () {
@@ -492,30 +541,25 @@ jQuery(function ($) {
     
     test("Incorrect usage of function builders throws errors", function () {
         var count = 0, expected = 0;
-        try {
+        raises(function () {
             Myrtle.fn().when().when();
-        } catch (e1) {
-            ++count;
-        }
-        equal(count, ++expected);
-        try {
+        }, /can not be used/);
+        
+        raises(function () {
             Myrtle.fn().then();
-        } catch (e2) {
-            ++count;
-        }
-        equal(count, ++expected);
-        try {
+        }, /can only be used/);
+        
+        raises(function () {
             Myrtle.fn().when(1).otherwise();
-        } catch (e3) {
-            ++count;
-        }
-        equal(count, ++expected);
-        try {
+        }, /can not be used/);
+        
+        raises(function () {
             Myrtle.fn().otherwise().then(3);
-        } catch (e4) {
-            ++count;
-        }
-        equal(count, ++expected);
+        }, /can only be used/);
+        
+        raises(function () {
+            Myrtle.fn().run();
+        }, /can only be used/);
     });
     
     test("Reuse of when clause is last-in-first-out", function () {

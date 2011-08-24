@@ -12,7 +12,6 @@
         store,
         addToStore,
         getFromStore,
-        handleMixedArgs,
         removeFromStore,
         cleanUp,
         noop,
@@ -116,10 +115,7 @@
             M.stub(root, 'setTimeout', function (orig, fn, time) {
                 var executeAt, id;
                 
-                time = parseInt(time, 10);
-                if (time < 0) {
-                    throw new Error("setTimeout can only take time intervals in non-negative integers");
-                }
+                time = Math.max(parseInt(time, 10) || 1, 1);
                 
                 executeAt = currentTime + time;
                 
@@ -155,10 +151,7 @@
             M.stub(root, 'setInterval', function (orig, fn, time) {
                 var id, wrapped;
 
-                time = parseInt(time, 10);
-                if (time <= 0) {
-                    throw new Error("setInterval can only take time intervals in positive integers");
-                }
+                time = Math.max(parseInt(time, 10) || 1, 1);
                 
                 wrapped = function () {
                     fn.call(root);
@@ -183,15 +176,17 @@
         
         M.tick = function (time) {
             var f, destination;
-            //i = currentTime;
-            //currentTime += time;
+            if (typeof time !== 'number' || Math.floor(time) !== time || time < 1) {
+                throw "tick() only accepts positive integer input";
+            }
             destination = currentTime + time;
             
             if (isEmpty(queue)) {
                 return;
             }
+            
             // TODO: this is highly inefficient...
-            for (; currentTime <= destination; ++currentTime) {
+            for (++currentTime; currentTime <= destination; ++currentTime) {
                 if (queue.hasOwnProperty(currentTime)) {
                     for (f in queue[currentTime]) {
                         if (queue[currentTime].hasOwnProperty(f)) {
@@ -555,28 +550,16 @@
         store.push(info);
         return info;
     };
-    
-    handleMixedArgs = function (args) {
-        return args.length === 2
-             ? args[0][args[1]]
-             : args[0]
-        ;
-    };
-    
+    /*jslint forin: true */
     isEmpty = function (obj) {
-        var i;
-        if (Object.prototype.toString.call(obj) === '[object Array]') {
-            return obj.length === 0;
-        } else {
-            /*jslint forin: true */
-            for (i in obj) {
-                return false;
-            }
-            /*jslint forin: false */
-            return true;
+        for (var i in obj) {
+            return false;
         }
+        return true;
     };
-    
+    /*jslint forin: false */
+
+//#JSCOVERAGE_IF
     if (typeof module !== 'undefined') {
         module.exports = M;
     } else {
