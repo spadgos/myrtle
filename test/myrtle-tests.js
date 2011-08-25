@@ -263,6 +263,24 @@ jQuery(function ($) {
         strictEqual(typeof handle.lastError(), "undefined", "There should have been no error trapped.");
     });
     
+    test("Myrtle can automatically clean up by using and()", function () {
+        var obj = {
+            f : function () {}
+        };
+        Myrtle.spy(obj, 'f').and(function () {
+            obj.f();
+            equal(this.callCount(), 1);
+        });
+        ok(!Myrtle.hasModified(obj.f));
+        
+        raises(function () {
+            Myrtle.spy(obj, 'f').and(function () {
+                throw 'foo';
+            });
+        }, /^foo$/);
+        ok(!Myrtle.hasModified(obj.f));
+    });
+    
     module("Fake timers");
     
     test("Myrtle can fake setTimeout", function () {
@@ -500,6 +518,127 @@ jQuery(function ($) {
             Myrtle.tick(50.1);
         }, /positive integer/);
         Myrtle.realTimers();
+    });
+    
+    test("Tick can only be used while fakeTimers are active", function () {
+        raises(function () {
+            Myrtle.tick(1);
+        }, /Fake timers are not currently active/);
+    });
+    
+    test("Fake intervals and timers are clipped to a minimum of 1ms", function () {
+        var obj = {
+                f : function () {}
+            },
+            handle = Myrtle.spy(obj, 'f')
+        ;
+        Myrtle.fakeTimers();
+        setTimeout(obj.f, 0);
+        setTimeout(obj.f, -1);
+        setTimeout(obj.f, null);
+        setTimeout(obj.f);
+        setTimeout(obj.f, {});
+        setTimeout(obj.f, "hello");
+        setTimeout(obj.f, "-5");
+        
+        Myrtle.tick(1);
+        
+        equal(handle.callCount(), 7, "Each of the timers should have been triggered");
+        
+        handle.reset();
+        
+        setInterval(obj.f, 0);
+        setInterval(obj.f, -1);
+        setInterval(obj.f, null);
+        setInterval(obj.f);
+        setInterval(obj.f, {});
+        setInterval(obj.f, "hello");
+        setInterval(obj.f, "-5");
+        
+        Myrtle.tick(5);
+        
+        equal(handle.callCount(), 35, "The intervals should have been triggered 5 times each");
+        
+        Myrtle.realTimers();
+        handle.release();
+    });
+    
+    test("Timer values passed to setInterval and setTimeout are parsed as numbers", function () {
+        var obj = {
+                f : function () {}
+            },
+            id,
+            handle = Myrtle.spy(obj, 'f')
+        ;
+        Myrtle.fakeTimers();
+        setTimeout(obj.f, "1");
+        setTimeout(obj.f, "2");
+        
+        Myrtle.tick(2);
+        equal(handle.callCount(), 2, "Both strings should have been parsed as integers");
+        
+        handle.reset();
+        
+        setTimeout(obj.f, [5]);
+        Myrtle.tick(1);
+        equal(handle.callCount(), 0);
+        Myrtle.tick(4);
+        equal(handle.callCount(), 1, "The array should have been converted to an integer");
+        
+        handle.reset();
+        
+        id = setInterval(obj.f, "5");
+        Myrtle.tick(10);
+        equal(handle.callCount(), 2);
+        
+        clearInterval(id);
+        handle.reset();
+ 
+        id = setInterval(obj.f, [3, 8, 10]); // should end up as 3
+        Myrtle.tick(30);
+        equal(handle.callCount(), 10);
+        clearInterval(id);
+        
+        Myrtle.realTimers();
+        handle.release();
+        
+    });
+    
+    test("Faking timers in a closure", function () {
+        var obj = {
+                fn : function () {},
+                closure : function () {
+                    var x = false;
+                    setTimeout(function () {
+                        x = true;
+                    }, 1);
+                    Myrtle.tick(1);
+                    ok(x);
+                }
+            },
+            handleClosure = Myrtle.spy(obj, 'closure'),
+            handleFn = Myrtle.spy(obj, 'fn')
+        ;
+        
+        Myrtle.fakeTimers(obj.closure);
+        equal(handleClosure.callCount(), 1);
+        
+        raises(function () {
+            Myrtle.tick(1);
+        }, /Fake timers are not currently active/);
+        
+        Myrtle.releaseAll();
+    });
+    
+    test("Fake timers are automatically cleaned up when errors are thrown", function () {
+        raises(function () {
+            Myrtle.fakeTimers(function () {
+                throw "foo";
+            });
+        }, /^foo/);
+        raises(function () {
+            Myrtle.tick(1);
+        }, /Fake timers are not currently active/);
     });
     
     module("Function generators");

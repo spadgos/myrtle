@@ -97,9 +97,9 @@
     //  TIMERS MODULE //
     ////////////////////
     (function () {
-        var counter = 0,
-            currentTime = 0,
-            queue = {},
+        var counter,
+            currentTime,
+            queue,
             reset
         ;
 
@@ -111,7 +111,7 @@
         
         reset();
         
-        M.fakeTimers = function () {
+        M.fakeTimers = function (opt_fn) {
             M.stub(root, 'setTimeout', function (orig, fn, time) {
                 var executeAt, id;
                 
@@ -164,6 +164,14 @@
             M.stub(root, 'clearInterval', function (orig, id) {
                 root.clearTimeout(id);
             });
+            
+            if (typeof opt_fn === 'function') {
+                try {
+                    opt_fn();
+                } finally {
+                    M.realTimers();
+                }
+            }
         };
         
         M.realTimers = function () {
@@ -178,6 +186,10 @@
             var f, destination;
             if (typeof time !== 'number' || Math.floor(time) !== time || time < 1) {
                 throw "tick() only accepts positive integer input";
+            }
+            
+            if (!M.hasModified(root.setTimeout)) {
+                throw "Fake timers are not currently active.";
             }
             destination = currentTime + time;
             
@@ -545,6 +557,13 @@
             },
             release : function () {
                 removeFromStore(obj[fnName]);
+            },
+            and : function (fn) {
+                try {
+                    fn.call(this);
+                } finally {
+                    this.release();
+                }
             }
         };
         store.push(info);
