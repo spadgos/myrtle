@@ -7,6 +7,8 @@
  * Licensed under the Creative Commons BY-SA License
  * http://creativecommons.org/licenses/by-sa/3.0/
  */
+/*globals module */
+/*jslint newcap: false */
 (function (root) {
     var M,
         store,

@@ -1,4 +1,4 @@
-/*globals jQuery, test, module, expect, equal, ok, Myrtle, notStrictEqual, strictEqual */
+/*globals jQuery, test, module, expect, equal, ok, Myrtle, notStrictEqual, strictEqual, raises */
 jQuery(function ($) {
     var Cls, undef;
 
