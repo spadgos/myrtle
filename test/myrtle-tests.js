@@ -125,6 +125,25 @@ jQuery(function ($) {
         fnInfo.release();
     });
     
+    test("Functions retain their properties", function () {
+        var obj = {
+            two  : function (a, b) {},
+            one  : function (a) {},
+            zero : function () {}
+        };
+        equal(obj.two.length, 2, "Sanity check failed. Function length incorrect.");
+        Myrtle.spy(obj, 'two').and(function () {
+            equal(obj.two.length, 2, "The arguments list is the incorrect size");
+        });
+        
+        Myrtle.spy(obj, 'one').and(function () {
+            equal(obj.one.length, 1, "The arguments list is the incorrect size");
+        });
+        Myrtle.spy(obj, 'zero').and(function () {
+            equal(obj.zero.length, 0, "The arguments list is the incorrect size");
+        });
+    });
+    
     test("Functions can be stubbed out", function () {
         var obj = new Cls(),
             fnInfo

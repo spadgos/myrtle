@@ -16,6 +16,7 @@
         getFromStore,
         removeFromStore,
         cleanUp,
+        makeFuncWithLength,
         noop,
         undef,
         isEmpty
@@ -434,7 +435,8 @@
      * @return {Object}
      */
     addToStore = function (obj, fnName, fn) {
-        var info = {
+        var info, replacement;
+        info = {
             origObj : obj,                          // the object which holds the function
             origFnName : fnName,                    // the name of the function on that object
             origFn : fn,                            // the original function
@@ -446,7 +448,7 @@
             
             history : []                            // Data about each call to this function
         };
-        obj[fnName] = function () {
+        replacement = function () {
             var ret, args, boundFn, startTime, error;
             
             // get the arguments passed to this function
@@ -568,17 +570,52 @@
                 }
             }
         };
+        obj[fnName] = makeFuncWithLength(fn.length, replacement);
         store.push(info);
         return info;
     };
-    /*jslint forin: true */
     isEmpty = function (obj) {
+        /*jslint forin: true */
         for (var i in obj) {
             return false;
         }
+        /*jslint forin: false */
         return true;
     };
-    /*jslint forin: false */
+
+    /*jslint white: false */
+    /**
+     * Creates a function with its length set to a specific number.
+     * This is needed so that a function which has been spied upon keeps the same length property.
+     * 
+     *     o.foo = function (a, b) {};
+     *     o.foo.length;         // 2
+     *     Myrtle.spy(o, 'foo');
+     *     o.foo.length;         // 2
+     *
+     * As you can see by the implementation of this function, it's a bit hacky. It only works for up to 10 arguments.
+     * 
+     * @param  {Number} length     The desired length of the function
+     * @param  {Function} fn       The actual function to execute
+     * 
+     * @return {Function}
+     */
+    makeFuncWithLength = function (length, fn) {
+        switch (length) {
+        case 0 : return function () { return fn.apply(this, arguments); };
+        case 1 : return function (a) { return fn.apply(this, arguments); };
+        case 2 : return function (a,b) { return fn.apply(this, arguments); };
+        case 3 : return function (a,b,c) { return fn.apply(this, arguments); };
+        case 4 : return function (a,b,c,d) { return fn.apply(this, arguments); };
+        case 5 : return function (a,b,c,d,e) { return fn.apply(this, arguments); };
+        case 6 : return function (a,b,c,d,e,f) { return fn.apply(this, arguments); };
+        case 7 : return function (a,b,c,d,e,f,g) { return fn.apply(this, arguments); };
+        case 8 : return function (a,b,c,d,e,f,g,h) { return fn.apply(this, arguments); };
+        case 9 : return function (a,b,c,d,e,f,g,h,i) { return fn.apply(this, arguments); };
+        default : return function (a,b,c,d,e,f,g,h,i,j) { return fn.apply(this, arguments); };
+        }
+    };
+    /*jslint white: true */
 
 //#JSCOVERAGE_IF
     if (typeof module !== 'undefined') {
