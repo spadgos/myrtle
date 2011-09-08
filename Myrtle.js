@@ -1,6 +1,6 @@
 /*!
  * Myrtle - A JavaScript Mocking Framework
- * 
+ *
  * https://github.com/spadgos/myrtle/wiki
  *
  * Copyright (c) 2011 Nick Fisher
@@ -21,23 +21,24 @@
         undef,
         isEmpty
     ;
-    
+
     store = [];
-    
+
     noop = function () {};
     //////////////////////////
     //  SPYING AND MOCKING  //
     //////////////////////////
     /**
      * Myrtle
-     * 
+     *
      * @param  {Object}             obj             Description
      * @param  {String}             fnName          The name of a function
      * @param  {Object}             options         Options for this function
      * @param  {Boolean}            options.spy     Whether the function should be spied upon.
      * @param  {Boolean}            options.profile Whether the function should be profiled.
-     * @param  {Boolean|Function}   options.stub    A function to run instead of the original function, or true for no 
+     * @param  {Boolean|Function}   options.stub    A function to run instead of the original function, or true for no
      *                                              action, or false to disable stubbing.
+     * @return {Object} A Myrtle handle to the method
      */
     M = function (obj, fnName, options) {
         var fn = obj[fnName],
@@ -65,33 +66,69 @@
         }
         return info.api;
     };
-    
+    /**
+     * Spy on an object's method
+     *
+     * @param  {Object} obj      An object which holds the method to spy upon
+     * @param  {String} fnName   The name of the method.
+     *
+     * @return {Object} A Myrtle handle to the method
+     */
     M.spy = function (obj, fnName) {
         return M(obj, fnName, {
             spy : true
         });
     };
-    
+
+    /**
+     * Stub an object's method
+     *
+     * @param  {Object} obj      An object which holds the method to spy upon
+     * @param  {String} fnName   The name of the method.
+     *
+     * @return {Object} A Myrtle handle to the method
+     */
     M.stub = function (obj, fnName, fn) {
         return M(obj, fnName, {
             stub : typeof fn === 'undefined' ? true : fn
         });
     };
+
+    /**
+     * Profile an object's method
+     *
+     * @param  {Object} obj      An object which holds the method to spy upon
+     * @param  {String} fnName   The name of the method.
+     *
+     * @return {Object} A Myrtle handle to the method
+     */
     M.profile = function (obj, fnName) {
         return M(obj, fnName, {
             profile : true
         });
     };
-    
+    /**
+     * Get the number of methods which Myrtle has modified.
+     *
+     * @return {Number}
+     */
     M.size = function () {
         return store.length;
     };
+    /**
+     * Release (restore) all the methods which Myrtle has modified.
+     */
     M.releaseAll = function () {
         var info;
         while ((info = store.pop())) {
             cleanUp(info);
         }
     };
+    /**
+     * Check whether a given function is one which has been modified by Myrtle.
+     *
+     * @return {Boolean} true if the given method has been modified
+     */
     M.hasModified = function (fn) {
         return getFromStore(fn, true) !== -1;
     };
@@ -111,17 +148,17 @@
             currentTime = 0;
             queue = {};
         };
-        
+
         reset();
-        
+
         M.fakeTimers = function (opt_fn) {
             M.stub(root, 'setTimeout', function (orig, fn, time) {
                 var executeAt, id;
-                
+
                 time = Math.max(parseInt(time, 10) || 1, 1);
-                
+
                 executeAt = currentTime + time;
-                
+
                 if (fn.__myrtle_setInterval) {
                     id = fn.__myrtle_setInterval;
                 } else {
@@ -133,7 +170,7 @@
                 queue[executeAt][id] = fn;
                 return id;
             });
-            
+
             M.stub(root, 'clearTimeout', function (orig, id) {
                 var t;
                 if (id && id <= counter) {
@@ -150,12 +187,12 @@
                     }
                 }
             });
-            
+
             M.stub(root, 'setInterval', function (orig, fn, time) {
                 var id, wrapped;
 
                 time = Math.max(parseInt(time, 10) || 1, 1);
-                
+
                 wrapped = function () {
                     fn.call(root);
                     root.setTimeout(wrapped, time);
@@ -167,7 +204,7 @@
             M.stub(root, 'clearInterval', function (orig, id) {
                 root.clearTimeout(id);
             });
-            
+
             if (typeof opt_fn === 'function') {
                 try {
                     opt_fn();
@@ -176,7 +213,7 @@
                 }
             }
         };
-        
+
         M.realTimers = function () {
             M(root, 'setTimeout').release();
             M(root, 'clearTimeout').release();
@@ -184,22 +221,22 @@
             M(root, 'clearInterval').release();
             reset();
         };
-        
+
         M.tick = function (time) {
             var f, destination;
             if (typeof time !== 'number' || Math.floor(time) !== time || time < 1) {
                 throw "tick() only accepts positive integer input";
             }
-            
+
             if (!M.hasModified(root.setTimeout)) {
                 throw "Fake timers are not currently active.";
             }
             destination = currentTime + time;
-            
+
             if (isEmpty(queue)) {
                 return;
             }
-            
+
             // TODO: this is highly inefficient...
             for (++currentTime; currentTime <= destination; ++currentTime) {
                 if (queue.hasOwnProperty(currentTime)) {
@@ -214,14 +251,14 @@
             currentTime = destination;
         };
     }());
-    
+
     /////////////////////////
     //  FUNCTION BUILDERS  //
     /////////////////////////
     (function () {
         var getMatchingMap = function (map, args) {
             var i, l, a, al = args.length, match, matchFound;
-                
+
             // loop over the stored arguments to find a match
             for (i = 0, l = map.length; i < l; ++i) {
                 if (map[i].args.length === al) {
@@ -254,7 +291,7 @@
                 blank = {},
                 lastWhen = blank
             ;
-            
+
             f = function () {
                 var match = getMatchingMap(map,
                     f.__myrtleStub
@@ -262,7 +299,7 @@
                         ? Array.prototype.slice.call(arguments, 1)
                         : arguments
                 );
-                
+
                 if (match) {
                     return match.hasOwnProperty('ret')
                          ? match.ret
@@ -277,12 +314,12 @@
                        )
                 ;
             };
-            
+
             f.__myrtleStub = false;
-            
+
             /**
              * Set up the function with the precondition that certain arguments are passed.
-             * 
+             *
              * @param {...args} Any number of arguments. If the created function is given these exact values, then the
              *                  precondition is met, and the appropriate value will be returned.
              * @return {this}   A reference to this object, allowing chaining.
@@ -296,7 +333,7 @@
             };
             /**
              * Specify that a certain value should be returned when the precondition is met.
-             * 
+             *
              * @param  {*} returnVal    The value to return.
              * @return {this}           A reference to this object, allowing chaining.
              */
@@ -313,7 +350,7 @@
             };
             /**
              * Sets up a catch-all precondition and return value.
-             * 
+             *
              * @param  {*} returnVal    The value to return when no other condition has been met.
              * @return {this}           A reference to this object, allowing chaining.
              */
@@ -328,10 +365,10 @@
             /**
              * Instead of returning a hardcoded value when the preconditions are matched, this allows a custom function
              * to be executed instead.
-             * 
+             *
              * @param  {Function} customFn  A function to run instead. It receives the same arguments as the original,
              *                              and its return value will be used.
-             * 
+             *
              * @return {this}
              */
             f.run = function (customFn) {
@@ -353,7 +390,7 @@
             /**
              * Seal this function builder, preventing any further modifications. The interface remains exactly the same,
              * however the other functions now perform no action.
-             * 
+             *
              * @return {this}
              */
             f.seal = function () {
@@ -371,7 +408,7 @@
              * Remove the extra function-building methods from this object, effective returning it to be a regular
              * function. Note that this is *not* necessary for most use cases, only in cases where having additional
              * properties on the function may affect program flow.
-             * 
+             *
              * @return {Function}
              */
             f.get = function () {
@@ -390,7 +427,7 @@
     ///////////////////////
     //  PRIVATE METHODS  //
     ///////////////////////
-    
+
     getFromStore = function (fn, indexOnly) {
         var i, l;
         for (i = 0, l = store.length; i < l; ++i) {
@@ -445,21 +482,21 @@
             stub : false,                           // Whether this function is being stubbed.
             profile : false,                        // Whether this function is being profiled.
             spy : false,                            // Whether this function is being spied upon.
-            
+
             history : []                            // Data about each call to this function
         };
         replacement = function () {
             var ret, args, boundFn, startTime, error;
-            
+
             // get the arguments passed to this function
             args = Array.prototype.slice.apply(arguments);
-            
+
             // wrap the original function in a closure so that we can control the context during the call.
             // calling `boundFn()` will always have the original object set as `this`.
             boundFn = function () {
                 return info.origFn.apply(info.origObj, arguments);
             };
-            
+
             // execute the original function, or the stub
             if (info.profile) {
                 startTime = new Date();
@@ -587,17 +624,17 @@
     /**
      * Creates a function with its length set to a specific number.
      * This is needed so that a function which has been spied upon keeps the same length property.
-     * 
+     *
      *     o.foo = function (a, b) {};
      *     o.foo.length;         // 2
      *     Myrtle.spy(o, 'foo');
      *     o.foo.length;         // 2
      *
      * As you can see by the implementation of this function, it's a bit hacky. It only works for up to 10 arguments.
-     * 
+     *
      * @param  {Number} length     The desired length of the function
      * @param  {Function} fn       The actual function to execute
-     * 
+     *
      * @return {Function}
      */
     makeFuncWithLength = function (length, fn) {
