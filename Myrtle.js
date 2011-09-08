@@ -11,24 +11,24 @@
 /*jslint newcap: false */
 (function (root) {
     var M,
-        store,
-        addToStore,
-        getFromStore,
-        removeFromStore,
-        cleanUp,
-        makeFuncWithLength,
         noop,
         undef,
         isEmpty
     ;
-
-    store = [];
 
     noop = function () {};
     //////////////////////////
     //  SPYING AND MOCKING  //
     //////////////////////////
     (function () {
+        var MyrtleHandle,
+            store = [],
+            addToStore,
+            getFromStore,
+            removeFromStore,
+            cleanUp,
+            makeFuncWithLength
+        ;
         /**
          * Myrtle
          *
@@ -133,6 +133,142 @@
         M.hasModified = function (fn) {
             return getFromStore(fn, true) !== -1;
         };
+
+        /**
+         * The MyrtleHandle is what is returned from any of the spying/stubbing/profiling functions. It provides an API
+         * to metadata about the modified method.
+         */
+        MyrtleHandle = function (info) {
+            this.getHistory = this.h = function () {
+                return info.history;
+            };
+            this.release = function () {
+                removeFromStore(info.origObj[info.origFnName]);
+            };
+        };
+        /**
+         * Gets the number of times this method has been invoked.
+         * @return {Number}
+         */
+        MyrtleHandle.prototype.callCount = function () {
+            return this.h().length;
+        };
+        /**
+         * Gets the history information about the last invocation.
+         * @return {Object}
+         */
+        MyrtleHandle.prototype.last = function () {
+            var h = this.h();
+            return h[h.length - 1]; // h[-1] is ok.. undefined is the desired result in this case
+        };
+        /**
+         * Gets the value last returned by this method.
+         * @return {*}
+         */
+        MyrtleHandle.prototype.lastReturn = function () {
+            var l = this.last();
+            return l && l.ret;
+        };
+        /**
+         * Gets the arguments last passed to this method.
+         * @return {Array.<*>}
+         */
+        MyrtleHandle.prototype.lastArgs = function () {
+            var l = this.last();
+            return l && l.args;
+        };
+        /**
+         * Gets the context (`this`) during the last invocation of this method
+         * @return {*}
+         */
+        MyrtleHandle.prototype.lastThis = function () {
+            var l = this.last();
+            return l && l['this'];
+        };
+        /**
+         * Gets the error thrown during the last invocation of this method, if any.
+         *
+         * @return {*} Undefined will be returned if nothing was thrown.
+         */
+        MyrtleHandle.prototype.lastError = function () {
+            var l = this.last();
+            return l && l.error;
+        };
+        /**
+         * Gets the average running time of this method.
+         * @return {Number}
+         */
+        MyrtleHandle.prototype.getAverageTime = function () {
+            var total = 0, count = 0, i, l, h, history = this.h();
+            for (i = 0, l = history.length; i < l; ++i) {
+                h = history[i];
+                if (h.time !== false) {
+                    total += h.time;
+                    ++count;
+                }
+            }
+            return count && (total / count);
+        };
+        /**
+         * Gets the history information about the quickest invocation of this function.
+         * @return {Object}
+         */
+        MyrtleHandle.prototype.getQuickest = function () {
+            var quickest = null, quickestIndex = -1, i, l, h, history = this.h();
+            for (i = 0, l = history.length; i < l; ++i) {
+                h = history[i];
+                if (h.time !== false) {
+                    if (quickest === null || h.time < quickest) {
+                        quickest = h.time;
+                        quickestIndex = i;
+                    }
+                }
+            }
+            return history[quickestIndex];
+        };
+        /**
+         * Gets the history information about the slowest invocation of this function.
+         * @return {Object}
+         */
+        MyrtleHandle.prototype.getSlowest = function () {
+            var slowest = null, slowestIndex = -1, i, l, h, history = this.h();
+            for (i = 0, l = history.length; i < l; ++i) {
+                h = history[i];
+                if (h.time !== false) {
+                    if (slowest === null || h.time > slowest) {
+                        slowest = h.time;
+                        slowestIndex = i;
+                    }
+                }
+            }
+            return history[slowestIndex];
+        };
+        /**
+         * Resets the history information for this method.
+         */
+        MyrtleHandle.prototype.reset = function () {
+            this.h().splice(0); // remove all items from the array without actually replacing it.
+        };
+        /**
+         * Executes a function and then releases this method, even if an error is thrown during execution.
+         * The MyrtleHandle object is accessible by `this`.
+         *
+         * Example usage:
+         *
+         *      Myrtle.spy(myObj, 'foo').and(function () {
+         *          myObj.foo();
+         *          assert.that(this.callCount()).is(1).since("The method should be called once");
+         *      });
+         *
+         * @param  {Function} fn A function to execute
+         */
+        MyrtleHandle.prototype.and = function (fn) {
+            try {
+                fn.call(this);
+            } finally {
+                this.release();
+            }
+        };
         ////////////////////////////////////////
         getFromStore = function (fn, indexOnly) {
             var i, l;
@@ -191,7 +327,7 @@
 
                 history : []                            // Data about each call to this function
             };
-            replacement = function () {
+            obj[fnName] = makeFuncWithLength(fn.length, function () {
                 var ret, args, boundFn, startTime, error;
 
                 // get the arguments passed to this function
@@ -232,90 +368,45 @@
                 } else {
                     return ret;
                 }
-            };
-            info.api = {
-                callCount : function () {
-                    return info.history.length;
-                },
-                last : function () {
-                    return info.history.length
-                         ? info.history[info.history.length - 1]
-                         : undef
-                    ;
-                },
-                lastReturn : function () {
-                    var l = this.last();
-                    return l && l.ret;
-                },
-                lastArgs : function () {
-                    var l = this.last();
-                    return l && l.args;
-                },
-                lastThis : function () {
-                    var l = this.last();
-                    return l && l['this'];
-                },
-                lastError : function () {
-                    var l = this.last();
-                    return l && l.error;
-                },
-                getHistory : function () {
-                    return info.history;
-                },
-                getAverageTime : function () {
-                    var total = 0, count = 0, i, l, h;
-                    for (i = 0, l = info.history.length; i < l; ++i) {
-                        h = info.history[i];
-                        if (h.time !== false) {
-                            total += h.time;
-                            ++count;
-                        }
-                    }
-                    return count && (total / count);
-                },
-                getQuickest : function () {
-                    var quickest = null, quickestIndex = -1, i, l, h;
-                    for (i = 0, l = info.history.length; i < l; ++i) {
-                        h = info.history[i];
-                        if (h.time !== false) {
-                            if (quickest === null || h.time < quickest) {
-                                quickest = h.time;
-                                quickestIndex = i;
-                            }
-                        }
-                    }
-                    return info.history[quickestIndex];
-                },
-                getSlowest : function () {
-                    var slowest = null, slowestIndex = -1, i, l, h;
-                    for (i = 0, l = info.history.length; i < l; ++i) {
-                        h = info.history[i];
-                        if (h.time !== false) {
-                            if (slowest === null || h.time > slowest) {
-                                slowest = h.time;
-                                slowestIndex = i;
-                            }
-                        }
-                    }
-                    return info.history[slowestIndex];
-                },
-                reset : function () {
-                    info.history = [];
-                },
-                release : function () {
-                    removeFromStore(obj[fnName]);
-                },
-                and : function (fn) {
-                    try {
-                        fn.call(this);
-                    } finally {
-                        this.release();
-                    }
-                }
-            };
-            obj[fnName] = makeFuncWithLength(fn.length, replacement);
+            });
+            info.api = new MyrtleHandle(info);
+
             store.push(info);
             return info;
+        };
+
+        /**
+         * Creates a function with its length set to a specific number.
+         * This is needed so that a function which has been spied upon keeps the same length property.
+         *
+         *     o.foo = function (a, b) {};
+         *     o.foo.length;         // 2
+         *     Myrtle.spy(o, 'foo');
+         *     o.foo.length;         // 2
+         *
+         * As you can see by the implementation of this function, it's a bit hacky. It works for up to 10 arguments.
+         *
+         * @param  {Number} length     The desired length of the function
+         * @param  {Function} fn       The actual function to execute
+         *
+         * @return {Function}
+         */
+        makeFuncWithLength = function (length, fn) {
+            /*jslint white: false */
+            switch (length) {
+            case 0 : return function () { return fn.apply(this, arguments); };
+            case 1 : return function (a) { return fn.apply(this, arguments); };
+            case 2 : return function (a,b) { return fn.apply(this, arguments); };
+            case 3 : return function (a,b,c) { return fn.apply(this, arguments); };
+            case 4 : return function (a,b,c,d) { return fn.apply(this, arguments); };
+            case 5 : return function (a,b,c,d,e) { return fn.apply(this, arguments); };
+            case 6 : return function (a,b,c,d,e,f) { return fn.apply(this, arguments); };
+            case 7 : return function (a,b,c,d,e,f,g) { return fn.apply(this, arguments); };
+            case 8 : return function (a,b,c,d,e,f,g,h) { return fn.apply(this, arguments); };
+            case 9 : return function (a,b,c,d,e,f,g,h,i) { return fn.apply(this, arguments); };
+            default : return function (a,b,c,d,e,f,g,h,i,j) { return fn.apply(this, arguments); };
+            }
+            /*jslint white: true */
         };
     }());
 
@@ -623,40 +714,6 @@
         /*jslint forin: false */
         return true;
     };
-
-    /*jslint white: false */
-    /**
-     * Creates a function with its length set to a specific number.
-     * This is needed so that a function which has been spied upon keeps the same length property.
-     *
-     *     o.foo = function (a, b) {};
-     *     o.foo.length;         // 2
-     *     Myrtle.spy(o, 'foo');
-     *     o.foo.length;         // 2
-     *
-     * As you can see by the implementation of this function, it's a bit hacky. It only works for up to 10 arguments.
-     *
-     * @param  {Number} length     The desired length of the function
-     * @param  {Function} fn       The actual function to execute
-     *
-     * @return {Function}
-     */
-    makeFuncWithLength = function (length, fn) {
-        switch (length) {
-        case 0 : return function () { return fn.apply(this, arguments); };
-        case 1 : return function (a) { return fn.apply(this, arguments); };
-        case 2 : return function (a,b) { return fn.apply(this, arguments); };
-        case 3 : return function (a,b,c) { return fn.apply(this, arguments); };
-        case 4 : return function (a,b,c,d) { return fn.apply(this, arguments); };
-        case 5 : return function (a,b,c,d,e) { return fn.apply(this, arguments); };
-        case 6 : return function (a,b,c,d,e,f) { return fn.apply(this, arguments); };
-        case 7 : return function (a,b,c,d,e,f,g) { return fn.apply(this, arguments); };
-        case 8 : return function (a,b,c,d,e,f,g,h) { return fn.apply(this, arguments); };
-        case 9 : return function (a,b,c,d,e,f,g,h,i) { return fn.apply(this, arguments); };
-        default : return function (a,b,c,d,e,f,g,h,i,j) { return fn.apply(this, arguments); };
-        }
-    };
-    /*jslint white: true */
 
 //#JSCOVERAGE_IF
     if (typeof module !== 'undefined') {
