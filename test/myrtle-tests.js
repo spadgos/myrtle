@@ -126,7 +126,7 @@ jQuery(function ($) {
     });
 
     test("Functions retain their properties", function () {
-        var i, args = [], o = {}, max = 10, thenDoTheAssertion;
+        var i, args = [], o = {}, max = 30, thenDoTheAssertion;
         expect(max + 1);
 
         thenDoTheAssertion = function () {
@@ -135,7 +135,7 @@ jQuery(function ($) {
         /*jslint evil: true */
         for (i = 0; i <= max; ++i) {
             o.f = new Function(args.join(","), "");
-            args.push(String.fromCharCode(65 + i));
+            args.push('_' + i.toString(36));
             Myrtle.spy(o, 'f').and(thenDoTheAssertion);
         }
         /*jslint evil: false */

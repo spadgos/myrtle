@@ -250,6 +250,22 @@
             this.h().splice(0); // remove all items from the array without actually replacing it.
         };
         /**
+         * Replace all the functions on the handle with no-ops.
+         */
+        MyrtleHandle.prototype.destroy = function () {
+            var i;
+            for (i in this) {
+                if (this.hasOwnProperty(i)) {
+                    this[i] = noop;
+                }
+            }
+            for (i in MyrtleHandle.prototype) {
+                if (MyrtleHandle.prototype.hasOwnProperty(i)) {
+                    this[i] = noop;
+                }
+            }
+        };
+        /**
          * Executes a function and then releases this method, even if an error is thrown during execution.
          * The MyrtleHandle object is accessible by `this`.
          *
@@ -297,11 +313,7 @@
                 // otherwise, just remove the function we added.
                 delete info.origObj[info.origFnName];
             }
-            for (i in info.api) {
-                if (info.api.hasOwnProperty(i)) {
-                    info.api[i] = noop;
-                }
-            }
+            info.api.destroy();
             for (i in info) {
                 if (info.hasOwnProperty(i)) {
                     delete info[i];
@@ -309,9 +321,7 @@
             }
         };
         /**
-         * Add a function into the store and get its meta data back
-         * @param  {Function} addToStore
-         * @return {Object}
+         * Add a function into the store and get its metadata back
          */
         addToStore = function (obj, fnName, fn) {
             var info, replacement;
@@ -384,29 +394,37 @@
          *     Myrtle.spy(o, 'foo');
          *     o.foo.length;         // 2
          *
-         * As you can see by the implementation of this function, it's a bit hacky. It works for up to 10 arguments.
-         *
          * @param  {Number} length     The desired length of the function
          * @param  {Function} fn       The actual function to execute
          *
          * @return {Function}
          */
         makeFuncWithLength = function (length, fn) {
+            var args = [], i, evil;
             /*jslint white: false */
             switch (length) {
-            case 0 : return function () { return fn.apply(this, arguments); };
-            case 1 : return function (a) { return fn.apply(this, arguments); };
-            case 2 : return function (a,b) { return fn.apply(this, arguments); };
-            case 3 : return function (a,b,c) { return fn.apply(this, arguments); };
-            case 4 : return function (a,b,c,d) { return fn.apply(this, arguments); };
-            case 5 : return function (a,b,c,d,e) { return fn.apply(this, arguments); };
+            case 0 : return function () {            return fn.apply(this, arguments); };
+            case 1 : return function (a) {           return fn.apply(this, arguments); };
+            case 2 : return function (a,b) {         return fn.apply(this, arguments); };
+            case 3 : return function (a,b,c) {       return fn.apply(this, arguments); };
+            case 4 : return function (a,b,c,d) {     return fn.apply(this, arguments); };
+            case 5 : return function (a,b,c,d,e) {   return fn.apply(this, arguments); };
             case 6 : return function (a,b,c,d,e,f) { return fn.apply(this, arguments); };
-            case 7 : return function (a,b,c,d,e,f,g) { return fn.apply(this, arguments); };
-            case 8 : return function (a,b,c,d,e,f,g,h) { return fn.apply(this, arguments); };
-            case 9 : return function (a,b,c,d,e,f,g,h,i) { return fn.apply(this, arguments); };
-            default : return function (a,b,c,d,e,f,g,h,i,j) { return fn.apply(this, arguments); };
+            default :
+                /*jslint white: true */
+                /*jslint evil: true */
+                args = [];
+                for (i = 0; i < length; ++i) {
+                    args.push('_' + i.toString(36));
+                }
+                evil = new Function("func",
+                    "return function (" + args.join(",") + ") {"
+                    + "    return func.apply(this, arguments);"
+                    + "};"
+                );
+                /*jslint evil: false */
+                return evil(fn);
             }
-            /*jslint white: true */
         };
     }());
 
