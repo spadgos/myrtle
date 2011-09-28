@@ -4,8 +4,8 @@
  * https://github.com/spadgos/myrtle/wiki
  *
  * Copyright (c) 2011 Nick Fisher
- * Licensed under the Creative Commons BY-SA License
- * http://creativecommons.org/licenses/by-sa/3.0/
+ * Distributed under the terms of the LGPL
+ * http://www.gnu.org/licenses/lgpl.html
  */
 /*globals module */
 /*jslint newcap: false */
