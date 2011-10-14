@@ -1,5 +1,6 @@
 /*!
  * Myrtle - A JavaScript Mocking Framework
+ * @version 1.0.0
  *
  * https://github.com/spadgos/myrtle/wiki
  *
