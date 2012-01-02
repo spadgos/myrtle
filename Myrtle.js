@@ -1,6 +1,6 @@
 /*!
  * Myrtle - A JavaScript Mocking Framework
- * @version 1.0.0
+ * @version 1.0.1
  *
  * https://github.com/spadgos/myrtle/wiki
  *
@@ -735,7 +735,7 @@
     };
 
 //#JSCOVERAGE_IF
-    if (typeof module !== 'undefined') {
+    if (typeof module !== 'undefined' && typeof exports !== 'undefined') {
         module.exports = M;
     } else {
         root.Myrtle = M;
