@@ -1,6 +1,6 @@
 /*!
  * Myrtle - A JavaScript Mocking Framework
- * @version 1.0.1
+ * @version 1.0.2
  *
  * https://github.com/spadgos/myrtle/wiki
  *
@@ -10,12 +10,18 @@
  */
 /*globals module */
 /*jslint newcap: false */
-(function (root) {
+(function () {
     var M,
         noop,
         undef,
-        isEmpty
+        isEmpty,
+        root
     ;
+
+    // Gets the global object, regardless of whether run as ES3, ES5 or ES5 Strict Mode.
+    root = (function () {
+        return this || (0 || eval)('this');
+    }());
 
     noop = function () {};
     //////////////////////////
@@ -740,4 +746,4 @@
     } else {
         root.Myrtle = M;
     }
-}(this));
+}());
