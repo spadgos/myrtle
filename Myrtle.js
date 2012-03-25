@@ -436,8 +436,10 @@
     var counter,
         currentTime,
         queue,
-        reset
-    ;
+        fakeSetTimeout,
+        fakeSetInterval,
+        fakeClearTimeout,
+        reset;
 
     reset = function () {
       counter = 0;
@@ -447,56 +449,60 @@
 
     reset();
 
-    M.fakeTimers = function (opt_fn) {
-      M.stub(root, 'setTimeout', function (orig, fn, time) {
-        var executeAt, id;
+    fakeSetTimeout = function (orig, fn, time) {
+      var executeAt, id;
 
-        time = Math.max(parseInt(time, 10) || 1, 1);
+      time = Math.max(parseInt(time, 10) || 1, 1);
 
-        executeAt = currentTime + time;
+      executeAt = currentTime + time;
 
-        if (fn.__myrtle_setInterval) {
-          id = fn.__myrtle_setInterval;
-        } else {
-          id = ++counter;
-        }
-        if (typeof queue[executeAt] === 'undefined') {
-          queue[executeAt] = {};
-        }
-        queue[executeAt][id] = fn;
-        return id;
-      });
-
-      M.stub(root, 'clearTimeout', function (orig, id) {
-        var t;
-        if (id && id <= counter) {
-          for (t in queue) {
-            if (queue.hasOwnProperty(t)) {
-              if (typeof queue[t][id] !== 'undefined') {
-                delete queue[t][id];
-                if (isEmpty(queue[t])) {
-                  delete queue[t];
-                }
-                return;
+      if (fn.__myrtle_setInterval) {
+        id = fn.__myrtle_setInterval;
+      } else {
+        id = ++counter;
+      }
+      if (typeof queue[executeAt] === 'undefined') {
+        queue[executeAt] = {};
+      }
+      queue[executeAt][id] = fn;
+      return id;
+    };
+    fakeClearTimeout = function (orig, id) {
+      var t;
+      if (id && id <= counter) {
+        for (t in queue) {
+          if (queue.hasOwnProperty(t)) {
+            if (typeof queue[t][id] !== 'undefined') {
+              delete queue[t][id];
+              if (isEmpty(queue[t])) {
+                delete queue[t];
               }
+              return;
             }
           }
         }
-      });
+      }
+    };
 
-      M.stub(root, 'setInterval', function (orig, fn, time) {
-        var id, wrapped;
+    fakeSetInterval = function (orig, fn, time) {
+      var id, wrapped;
 
-        time = Math.max(parseInt(time, 10) || 1, 1);
+      time = Math.max(parseInt(time, 10) || 1, 1);
 
-        wrapped = function () {
-          fn.call(root);
-          root.setTimeout(wrapped, time);
-        };
-        id = root.setTimeout(wrapped, time);
-        wrapped.__myrtle_setInterval = id;
-        return id;
-      });
+      wrapped = function () {
+        fn.call(root);
+        root.setTimeout(wrapped, time);
+      };
+      id = root.setTimeout(wrapped, time);
+      wrapped.__myrtle_setInterval = id;
+      return id;
+    };
+
+    M.fakeTimers = function (opt_fn) {
+      M.stub(root, 'setTimeout', fakeSetTimeout);
+      M.stub(root, 'clearTimeout', fakeClearTimeout);
+
+      M.stub(root, 'setInterval', fakeSetInterval);
       M.stub(root, 'clearInterval', function (orig, id) {
         root.clearTimeout(id);
       });
