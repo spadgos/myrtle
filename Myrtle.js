@@ -4,7 +4,7 @@
  *
  * https://github.com/spadgos/myrtle/wiki
  *
- * Copyright (c) 2011 Nick Fisher
+ * Copyright (c) 2011-2012 Nick Fisher
  * Distributed under the terms of the LGPL
  * http://www.gnu.org/licenses/lgpl.html
  */
@@ -176,143 +176,145 @@
         removeFromStore(info.origObj[info.origFnName]);
       };
     };
-    /**
-     * Gets the number of times this method has been invoked.
-     * @return {Number}
-     */
-    MyrtleHandle.prototype.callCount = function () {
-      return this.h().length;
-    };
-    /**
-     * Gets the history information about the last invocation.
-     * @return {Object}
-     */
-    MyrtleHandle.prototype.last = function () {
-      var h = this.h();
-      return h[h.length - 1]; // h[-1] is ok.. undefined is the desired result in this case
-    };
-    /**
-     * Gets the value last returned by this method.
-     * @return {*}
-     */
-    MyrtleHandle.prototype.lastReturn = function () {
-      var l = this.last();
-      return l && l.ret;
-    };
-    /**
-     * Gets the arguments last passed to this method.
-     * @return {Array.<*>}
-     */
-    MyrtleHandle.prototype.lastArgs = function () {
-      var l = this.last();
-      return l && l.args;
-    };
-    /**
-     * Gets the context (`this`) during the last invocation of this method
-     * @return {*}
-     */
-    MyrtleHandle.prototype.lastThis = function () {
-      var l = this.last();
-      return l && l['this'];
-    };
-    /**
-     * Gets the error thrown during the last invocation of this method, if any.
-     *
-     * @return {*} Undefined will be returned if nothing was thrown.
-     */
-    MyrtleHandle.prototype.lastError = function () {
-      var l = this.last();
-      return l && l.error;
-    };
-    /**
-     * Gets the average running time of this method.
-     * @return {Number}
-     */
-    MyrtleHandle.prototype.getAverageTime = function () {
-      var total = 0, count = 0, i, l, h, history = this.h();
-      for (i = 0, l = history.length; i < l; ++i) {
-        h = history[i];
-        if (h.time !== false) {
-          total += h.time;
-          ++count;
-        }
-      }
-      return count && (total / count);
-    };
-    /**
-     * Gets the history information about the quickest invocation of this function.
-     * @return {Object}
-     */
-    MyrtleHandle.prototype.getQuickest = function () {
-      var quickest = null, quickestIndex = -1, i, l, h, history = this.h();
-      for (i = 0, l = history.length; i < l; ++i) {
-        h = history[i];
-        if (h.time !== false) {
-          if (quickest === null || h.time < quickest) {
-            quickest = h.time;
-            quickestIndex = i;
+    MyrtleHandle.prototype = {
+      /**
+       * Gets the number of times this method has been invoked.
+       * @return {Number}
+       */
+      callCount: function () {
+        return this.h().length;
+      },
+      /**
+       * Gets the history information about the last invocation.
+       * @return {Object}
+       */
+      last: function () {
+        var h = this.h();
+        return h[h.length - 1]; // h[-1] is ok.. undefined is the desired result in this case
+      },
+      /**
+       * Gets the value last returned by this method.
+       * @return {*}
+       */
+      lastReturn: function () {
+        var l = this.last();
+        return l && l.ret;
+      },
+      /**
+       * Gets the arguments last passed to this method.
+       * @return {Array.<*>}
+       */
+      lastArgs: function () {
+        var l = this.last();
+        return l && l.args;
+      },
+      /**
+       * Gets the context (`this`) during the last invocation of this method
+       * @return {*}
+       */
+      lastThis: function () {
+        var l = this.last();
+        return l && l['this'];
+      },
+      /**
+       * Gets the error thrown during the last invocation of this method, if any.
+       *
+       * @return {*} Undefined will be returned if nothing was thrown.
+       */
+      lastError: function () {
+        var l = this.last();
+        return l && l.error;
+      },
+      /**
+       * Gets the average running time of this method.
+       * @return {Number}
+       */
+      getAverageTime: function () {
+        var total = 0, count = 0, i, l, h, history = this.h();
+        for (i = 0, l = history.length; i < l; ++i) {
+          h = history[i];
+          if (h.time !== false) {
+            total += h.time;
+            ++count;
           }
         }
-      }
-      return history[quickestIndex];
-    };
-    /**
-     * Gets the history information about the slowest invocation of this function.
-     * @return {Object}
-     */
-    MyrtleHandle.prototype.getSlowest = function () {
-      var slowest = null, slowestIndex = -1, i, l, h, history = this.h();
-      for (i = 0, l = history.length; i < l; ++i) {
-        h = history[i];
-        if (h.time !== false) {
-          if (slowest === null || h.time > slowest) {
-            slowest = h.time;
-            slowestIndex = i;
+        return count && (total / count);
+      },
+      /**
+       * Gets the history information about the quickest invocation of this function.
+       * @return {Object}
+       */
+      getQuickest: function () {
+        var quickest = null, quickestIndex = -1, i, l, h, history = this.h();
+        for (i = 0, l = history.length; i < l; ++i) {
+          h = history[i];
+          if (h.time !== false) {
+            if (quickest === null || h.time < quickest) {
+              quickest = h.time;
+              quickestIndex = i;
+            }
           }
         }
-      }
-      return history[slowestIndex];
-    };
-    /**
-     * Resets the history information for this method.
-     */
-    MyrtleHandle.prototype.reset = function () {
-      this.h().splice(0); // remove all items from the array without actually replacing it.
-    };
-    /**
-     * Replace all the functions on the handle with no-ops.
-     */
-    MyrtleHandle.prototype.destroy = function () {
-      var i;
-      for (i in this) {
-        if (this.hasOwnProperty(i)) {
-          this[i] = noop;
+        return history[quickestIndex];
+      },
+      /**
+       * Gets the history information about the slowest invocation of this function.
+       * @return {Object}
+       */
+      getSlowest: function () {
+        var slowest = null, slowestIndex = -1, i, l, h, history = this.h();
+        for (i = 0, l = history.length; i < l; ++i) {
+          h = history[i];
+          if (h.time !== false) {
+            if (slowest === null || h.time > slowest) {
+              slowest = h.time;
+              slowestIndex = i;
+            }
+          }
         }
-      }
-      for (i in MyrtleHandle.prototype) {
-        if (MyrtleHandle.prototype.hasOwnProperty(i)) {
-          this[i] = noop;
+        return history[slowestIndex];
+      },
+      /**
+       * Resets the history information for this method.
+       */
+      reset: function () {
+        this.h().length = 0; // remove all items from the array without actually replacing it.
+      },
+      /**
+       * Replace all the functions on the handle with no-ops.
+       */
+      destroy: function () {
+        var i;
+        for (i in this) {
+          if (this.hasOwnProperty(i)) {
+            this[i] = noop;
+          }
         }
-      }
-    };
-    /**
-     * Executes a function and then releases this method, even if an error is thrown during execution.
-     * The MyrtleHandle object is accessible by `this`.
-     *
-     * Example usage:
-     *
-     *      Myrtle.spy(myObj, 'foo').and(function () {
-     *          myObj.foo();
-     *          assert.that(this.callCount()).is(1).since("The method should be called once");
-     *      });
-     *
-     * @param  {Function} fn A function to execute
-     */
-    MyrtleHandle.prototype.and = function (fn) {
-      try {
-        fn.call(this);
-      } finally {
-        this.release();
+        for (i in MyrtleHandle.prototype) {
+          if (MyrtleHandle.prototype.hasOwnProperty(i)) {
+            this[i] = noop;
+          }
+        }
+      },
+      /**
+       * Executes a function and then releases this method, even if an error is thrown during execution.
+       * The MyrtleHandle object is accessible by `this`.
+       *
+       * Example usage:
+       *
+       *      Myrtle.spy(myObj, 'foo').and(function () {
+       *          myObj.foo();
+       *          assert.that(this.callCount()).is(1).since("The method should be called once");
+       *      });
+       *
+       * @param  {Function} fn A function to execute
+       */
+      and: function (fn) {
+        try {
+          fn.call(this);
+        } finally {
+          this.release();
+        }
       }
     };
     ////////////////////////////////////////
