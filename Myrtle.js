@@ -15,6 +15,9 @@
       noop,
       undef,
       isEmpty,
+      bind,
+      slice = Array.prototype.slice,
+      nativeBind = Function.prototype.bind,
       root;
 
   // Gets the global object, regardless of whether run as ES3, ES5 or ES5 Strict Mode.
@@ -23,6 +26,29 @@
   }());
 
   noop = function () {};
+
+  bind = (function () {
+    var ctor = function () {};
+    return function (func, context) {
+      var bound, args;
+      if (func.bind === nativeBind && nativeBind) {
+        return nativeBind.apply(func, slice.call(arguments, 1));
+      }
+      args = slice.call(arguments, 2);
+      return (bound = function() {
+        if (!(this instanceof bound)) {
+          return func.apply(context, args.concat(slice.call(arguments)));
+        }
+        ctor.prototype = func.prototype;
+        var self = new ctor(),
+            result = func.apply(self, args.concat(slice.call(arguments)));
+        if (Object(result) === result) {
+          return result;
+        }
+        return self;
+      });
+    };
+  }());
   //////////////////////////
   //  SPYING AND MOCKING  //
   //////////////////////////
@@ -342,7 +368,7 @@
         var ret, args, boundFn, startTime, error;
 
         // get the arguments passed to this function
-        args = Array.prototype.slice.apply(arguments);
+        args = slice.apply(arguments);
 
         // wrap the original function in a closure so that we can control the context during the call.
         // calling `boundFn()` will always have the original object set as `this`.
@@ -598,7 +624,7 @@
         var match = getMatchingMap(map,
           f.__myrtleStub
             // ignore the first argument (the original function)
-            ? Array.prototype.slice.call(arguments, 1)
+            ? slice.call(arguments, 1)
             : arguments
         );
 
