@@ -27,6 +27,7 @@
 
   noop = function () {};
 
+  // this implementation of bind taken from Underscore.JS
   bind = (function () {
     var ctor = function () {};
     return function (func, context) {
