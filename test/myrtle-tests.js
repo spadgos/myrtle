@@ -844,4 +844,15 @@ jQuery(function ($) {
 
     equal(handle.callCount(), 4, "The function's call count was not maintained.");
   });
+
+  test('Generated functions have their own spying', function () {
+    var fn = Myrtle.fn();
+    fn();
+    equal(fn.callCount(), 1);
+    fn();
+    equal(fn.callCount(), 2);
+    fn.reset();
+    fn();
+    equal(fn.callCount(), 1);
+  });
 });

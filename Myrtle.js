@@ -631,21 +631,23 @@
             : arguments
         );
 
+        f.__callCount++;
         if (match) {
           return match.hasOwnProperty('ret')
-             ? match.ret
-             : match.run.apply(this, arguments)
+            ? match.ret
+            : match.run.apply(this, arguments)
           ;
         }
         return map.otherwiseRun
-           ? map.otherwiseRun.apply(this, arguments)
-           : (map.hasOwnProperty('otherwise') || typeof baseFn !== 'function'
+          ? map.otherwiseRun.apply(this, arguments)
+          : (map.hasOwnProperty('otherwise') || typeof baseFn !== 'function'
             ? map.otherwise
             : baseFn.apply(this, arguments)
              )
         ;
       };
 
+      f.__callCount = 0;
       f.__myrtleStub = false;
 
       /**
@@ -751,6 +753,22 @@
         }
         return this;
       };
+
+      /**
+       * Get the number of times this function has been called.
+       * @return {Number}
+       */
+      f.callCount = function () {
+        return f.__callCount;
+      };
+
+      /**
+       * Reset the call statistics on this function.
+       */
+      f.reset = function () {
+        f.__callCount = 0;
+      };
+
       return f;
     };
   }());
