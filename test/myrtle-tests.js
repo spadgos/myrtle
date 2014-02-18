@@ -811,6 +811,21 @@ jQuery(function ($) {
     equal(f(1), -1);
     equal(f(2), 12);
   });
+
+  test("Myrtle functions can be used as stubs", function () {
+    var obj;
+    obj = {
+      base: 10,
+      f: function (a) {
+        return this.base + a;
+      }
+    };
+
+    Myrtle.stub(obj, 'f', Myrtle.fn(obj.f).when(1).then(-1));
+
+    equal(obj.f(1), -1);
+    equal(obj.f(2), 12);
+  });
   test("Myrtle stubs handle built functions", function () {
     var obj, handle;
     obj = {

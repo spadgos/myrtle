@@ -1,6 +1,6 @@
 /*!
  * Myrtle - A JavaScript Mocking Framework
- * @version 1.0.2
+ * @version 1.0.3
  *
  * https://github.com/spadgos/myrtle/wiki
  *
@@ -624,12 +624,13 @@
       ;
 
       f = function () {
-        var match = getMatchingMap(map,
-          f.__myrtleStub
+        var args, match;
+        args = f.__myrtleStub
             // ignore the first argument (the original function)
             ? slice.call(arguments, 1)
-            : arguments
-        );
+            : arguments;
+
+        match = getMatchingMap(map, args);
 
         f.__callCount++;
         if (match) {
@@ -642,8 +643,8 @@
           ? map.otherwiseRun.apply(this, arguments)
           : (map.hasOwnProperty('otherwise') || typeof baseFn !== 'function'
             ? map.otherwise
-            : baseFn.apply(this, arguments)
-             )
+            : baseFn.apply(this, args)
+          )
         ;
       };
 
